@@ -1,0 +1,14 @@
+{
+  "FileVersion": 2,
+  "Id": "f6def3a7-55d2-4d8a-ac63-1048ec069464",
+  "Items": [
+    {
+      "Id": "0c329120-bcfa-48cc-bd54-f9d7f5365b6a",
+      "Command": "127.0.0.1"
+    },
+    {
+      "Id": "5a2f90a7-9110-466f-8e73-3c456b9b8e6b",
+      "Command": "12345"
+    }
+  ]
+}
