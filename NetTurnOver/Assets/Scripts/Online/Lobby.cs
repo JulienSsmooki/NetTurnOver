@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,18 +12,19 @@ public class Lobby : MonoBehaviour
 {
     public InputField ipField;
     public InputField portField;
+    private Thread ReceiveThread;
 
     // Start is called before the first frame update
     void Start()
     {
-        
+        ipField.text = "127.0.0.1";
+        portField.text = "12345";
     }
 
     // Update is called once per frame
     void Update()
     {
-        if(IsConnected())
-            LoopSend();
+     
     }
 
     private static Socket _clientSocket = new Socket(
@@ -31,53 +33,58 @@ public class Lobby : MonoBehaviour
                                                   ProtocolType.Tcp);
     private static byte[] _buffer = new byte[1024];
 
-    public bool Connect()
+    public void Connect()
     {
-        return LoopConnect(ipField.text, Convert.ToInt32(portField.text));
+       StartCoroutine(CoroutineConnect(ipField.text, Convert.ToInt32(portField.text)));
+        ReceiveThread = new Thread(AsyncReceive) { Name = "LobbyClientReceiveThread" };
+        ReceiveThread.Start();
     }
 
-    private void LoopSend()
+    private void AsyncReceive()
     {
-        Debug.Log("Enter request : ");
-        string req = "get time";
-        byte[] dataBuf = Encoding.ASCII.GetBytes(req);
-        _clientSocket.Send(dataBuf);
-
-        byte[] receivedBuf = new byte[1024];
-        int dataSize = _clientSocket.Receive(receivedBuf);
-        byte[] data = new byte[dataSize];
-        Array.Copy(receivedBuf, data, dataSize);
-        Debug.Log("Received : " + Encoding.ASCII.GetString(data));
+        while (IsConnected())
+        {
+            byte[] receivedBuf = new byte[1024];
+            int dataSize = _clientSocket.Receive(receivedBuf);
+            byte[] data = new byte[dataSize];
+            Array.Copy(receivedBuf, data, dataSize);
+            Debug.Log("Received : " + SerializeUtils.DeserializeMsg(data));
+            Thread.Sleep(100);
+        }
+        ReceiveThread.Abort();
     }
 
-    private bool LoopConnect(string servAdress, int servPort)
+    public void SendGetTime()
     {
-        int attempts = 0;
+        Debug.Log("Send connection setting request.");
+        NetMessage newMsg = new NetMessage();
+        newMsg.head.lobbyProto = LobbyProto.Connection;
+        newMsg.body = BitConverter.GetBytes(-1);
+        _clientSocket.Send(SerializeUtils.SerializeMsg(newMsg));
+    }
+
+
+    
+
+    private IEnumerator CoroutineConnect(string servAdress, int servPort)
+    {
         if (!IsConnected())
         {
             try
             {
-                attempts++;
                 _clientSocket.Connect(new IPEndPoint(
                                      (Dns.GetHostAddresses(servAdress))[0],
                                      servPort));
             }
-            catch (SocketException)
+            catch(SocketException)
             {
-                Debug.ClearDeveloperConsole();
-                Debug.Log("Connection attempts : " +
-                                  attempts +
-                                  " | IP : " +
-                                  servAdress +
-                                  " | Port : " +
-                                  servPort +
-                                  " |");
+                Debug.Log("Not connected to server, try again...");
             }
+            yield return new WaitForSeconds(.1f);
         }
 
-        Debug.ClearDeveloperConsole();
-        Debug.Log("Connected after " + attempts + " attempts.");
-        return true;
+        Debug.Log("Connected to server!");
+        yield break; 
     }
 
     public bool IsConnected()

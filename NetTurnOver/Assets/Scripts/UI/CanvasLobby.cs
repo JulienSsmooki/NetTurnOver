@@ -31,13 +31,18 @@ public class CanvasLobby : MonoBehaviour
 
     public void Connect()
     {
-        while(lobby.Connect())
+        lobby.Connect();
+        while(!lobby.IsConnected())
         {
-            if(lobby.IsConnected())
-            {
-                _panelCommunication.SetActive(true);
-                _panelSetting.SetActive(false);
-            }
+            Debug.Log("Wait connection....");
         }
+        Debug.Log("Connection complete !");
+        _panelCommunication.SetActive(true);
+        _panelSetting.SetActive(false);
+    }
+
+    public void SendGetTime()
+    {
+        lobby.SendGetTime();
     }
 }

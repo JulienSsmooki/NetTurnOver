@@ -4,7 +4,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace LobbyServ
 {
@@ -14,7 +13,13 @@ namespace LobbyServ
                                                 AddressFamily.InterNetwork,
                                                 SocketType.Stream,
                                                 ProtocolType.Tcp);
-        private static List<Socket> _clientSockets = new List<Socket>();
+        public struct Client
+        {
+            public Socket clientSocket;
+            public long uid;
+            public LobbyProto lobbyState; 
+        }
+        private static List<Client> _clients = new List<Client>();
         private static byte[] _buffer = new byte[1024];
 
         static void Main(string[] args)
@@ -34,46 +39,54 @@ namespace LobbyServ
 
         private static void AcceptCallBack(IAsyncResult result)
         {
-            Socket client = _serverSocket.EndAccept(result);
-            _clientSockets.Add(client);
-            Console.WriteLine("Client n°" + _clientSockets.Count + " is Connected.");
-            client.BeginReceive(_buffer,
+            Socket clientSocket = _serverSocket.EndAccept(result);
+            Client newClient;
+            newClient.clientSocket = clientSocket;
+            newClient.lobbyState = LobbyProto.Unknown;
+            newClient.uid = _clients.Count > 0 ? _clients[_clients.Count - 1].uid + 1 : 0;
+            _clients.Add(newClient);
+            Console.WriteLine("Client: " + _clients.Count + " n°" + newClient.uid + " is Connected.");
+            newClient.clientSocket.BeginReceive(_buffer,
                                 0,
                                 _buffer.Length,
                                 SocketFlags.None,
                                 new AsyncCallback(ReceiveCallback),
-                                client);
+                                newClient);
             _serverSocket.BeginAccept(new AsyncCallback(AcceptCallBack), null);
         }
 
         private static void ReceiveCallback(IAsyncResult result)
         {
-            Socket client = (Socket)result.AsyncState;
-            int receive = client.EndReceive(result);
+            Client client = (Client)result.AsyncState;
+            int receive = client.clientSocket.EndReceive(result);
             byte[] dataBuf = new byte[receive];
             Array.Copy(_buffer, dataBuf, receive);
 
             ProcessDataFromReceive(client, dataBuf);
         }
 
-        private static void ProcessDataFromReceive(Socket client, byte[] dataBuf)
+        private static void ProcessDataFromReceive(Client client, byte[] dataBuf)
         {
             string debugText = Encoding.ASCII.GetString(dataBuf);
             Console.WriteLine("Request receive : " + debugText);
 
-            string request = string.Empty;
-            if(debugText.ToLower() != "get time")
-            {
-                request = "Invalid request";
-            }
-            else
-            {
-                request = DateTime.Now.ToLongTimeString();
-            }
-            byte[] data = Encoding.ASCII.GetBytes(request);
-            SendBuffer(client, data);
+            NetMessage newMsg = new NetMessage();
+            newMsg = SerializeUtils.DeserializeMsg(dataBuf);
 
-            client.BeginReceive(_buffer,
+            byte[] tmpdata = new byte[0];
+            switch (newMsg.head.lobbyProto)
+            {
+                case LobbyProto.Connection:
+                    tmpdata = ConnectionReceived(client);
+                    break;
+               
+                default: break;
+            }
+            
+            
+            SendBuffer(client, tmpdata);
+
+            client.clientSocket.BeginReceive(_buffer,
                                 0,
                                 _buffer.Length,
                                 SocketFlags.None,
@@ -81,9 +94,9 @@ namespace LobbyServ
                                 client);
         }
 
-        private static void SendBuffer(Socket client, byte[] data)
+        private static void SendBuffer(Client client, byte[] data)
         {
-            client.BeginSend(data,
+            client.clientSocket.BeginSend(data,
                              0, data.Length,
                              SocketFlags.None,
                              new AsyncCallback(SendCallback),
@@ -93,8 +106,17 @@ namespace LobbyServ
 
         private static void SendCallback(IAsyncResult result)
         {
-            Socket client = (Socket)result.AsyncState;
-            client.EndSend(result);
+            Client client = (Client)result.AsyncState;
+            client.clientSocket.EndSend(result);
+        }
+
+        private static byte[] ConnectionReceived(Client client)
+        {
+            NetMessage sendBackMsg = new NetMessage();
+            sendBackMsg.head.lobbyProto = LobbyProto.Connection;
+            sendBackMsg.body = BitConverter.GetBytes(client.uid);
+
+            return SerializeUtils.SerializeMsg(sendBackMsg);
         }
     }
 }
