@@ -1,5 +1,12 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿///////////////////////////////////////////////////////////////////////////////
+//                                                                           //
+//@Autor : Julien Lopez                                                      //
+//@Date : 01/09/2019                                                         //
+//@Description : CanvasLobby.cs                                              //
+//               Manage the canvas's panel and use functions provide         //
+//               by the Lobby.cs to communicate with Lobby server.           //
+//                                                                           //
+///////////////////////////////////////////////////////////////////////////////
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -41,8 +48,5 @@ public class CanvasLobby : MonoBehaviour
         _panelSetting.SetActive(false);
     }
 
-    public void SendGetTime()
-    {
-        lobby.SendGetTime();
-    }
+    
 }

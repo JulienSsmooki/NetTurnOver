@@ -1,9 +1,16 @@
-﻿using System;
+﻿///////////////////////////////////////////////////////////////////////////////
+//                                                                           //
+//@Autor : Julien Lopez                                                      //
+//@Date : 01/09/2019                                                         //
+//@Description : Lobby.cs                                                    //
+//               Provide some function to connect socket to the lobby server //
+//               and comminicate with it.                                    //
+//                                                                           //
+///////////////////////////////////////////////////////////////////////////////
+using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using UnityEngine;
 using UnityEngine.UI;
@@ -48,24 +55,31 @@ public class Lobby : MonoBehaviour
             int dataSize = _clientSocket.Receive(receivedBuf);
             byte[] data = new byte[dataSize];
             Array.Copy(receivedBuf, data, dataSize);
-            Debug.Log("Received : " + SerializeUtils.DeserializeMsg(data));
+            Type type = typeof(NetMessage);
+            Debug.Log("Received message.");
+            ProcessReceiveMsg((NetMessage)SerializeUtils.DeserializeMsg(data));
             Thread.Sleep(100);
         }
         ReceiveThread.Abort();
     }
 
-    public void SendGetTime()
+    private void ProcessReceiveMsg(NetMessage message)
     {
-        Debug.Log("Send connection setting request.");
-        NetMessage newMsg = new NetMessage();
-        newMsg.head.lobbyProto = LobbyProto.Connection;
-        newMsg.body = BitConverter.GetBytes(-1);
-        _clientSocket.Send(SerializeUtils.SerializeMsg(newMsg));
+        switch(message.head.lobbyProto)
+        {
+            case LobbyProto.Connection:
+                break;
+            default:break;
+        }
     }
 
+    public void SendMsg(NetMessage message)
+    {
+        Debug.Log("Message sended.");
+        _clientSocket.Send(SerializeUtils.SerializeMsg(message));
+    }
 
     
-
     private IEnumerator CoroutineConnect(string servAdress, int servPort)
     {
         if (!IsConnected())
@@ -84,6 +98,9 @@ public class Lobby : MonoBehaviour
         }
 
         Debug.Log("Connected to server!");
+        SendMsg(new NetMessage(
+                               new HeadMsg(LobbyProto.Connection),
+                               BitConverter.GetBytes(-1)));
         yield break; 
     }
 

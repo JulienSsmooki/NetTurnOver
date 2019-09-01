@@ -1,9 +1,18 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿///////////////////////////////////////////////////////////////////////////////
+//                                                                           //
+//@Autor : Julien Lopez                                                      //
+//@Date : 01/09/2019                                                         //
+//@Description : NetMessage.cs                                               //
+//               This is an utils file :                                     //
+//                   - There are some enum and struct sended througt network.//
+//                   - There is a custom serializer class for our custom msg.//
+//                                                                           //
+///////////////////////////////////////////////////////////////////////////////
+using System;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
-using UnityEngine;
 
+[Serializable]
 public enum LobbyProto
 {
     Unknown,
@@ -14,20 +23,29 @@ public enum LobbyProto
     Count,
 }
 
-[System.Serializable]
+[Serializable]
 public struct HeadMsg
 {
+    public HeadMsg(LobbyProto _lobbyProto)
+    {
+        lobbyProto = _lobbyProto;
+    }
     public LobbyProto lobbyProto;
 }
 
-[System.Serializable]
+[Serializable]
 public class NetMessage
 {
+    public NetMessage(HeadMsg _head, byte[] _body)
+    {
+        head = _head;
+        body = _body;
+    }
     public HeadMsg head;
     public byte[] body;
 }
 
-public class SerializeUtils
+public static class SerializeUtils
 {
     public static byte[] SerializeMsg(NetMessage message)
     {

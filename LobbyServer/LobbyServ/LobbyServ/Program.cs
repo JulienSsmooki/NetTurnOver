@@ -1,9 +1,15 @@
-﻿using System;
+﻿///////////////////////////////////////////////////////////////////////////////
+//                                                                           //
+//@Autor : Julien Lopez                                                      //
+//@Date : 01/09/2019                                                         //
+//@Description : Main entry, this is an server to provide a lobby to         //
+//               the project NetTurnOver.                                    //
+//                                                                           //
+///////////////////////////////////////////////////////////////////////////////
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 
 namespace LobbyServ
 {
@@ -67,11 +73,12 @@ namespace LobbyServ
 
         private static void ProcessDataFromReceive(Client client, byte[] dataBuf)
         {
-            string debugText = Encoding.ASCII.GetString(dataBuf);
+            string debugText = BitConverter.ToString(dataBuf, 0, dataBuf.Length);
             Console.WriteLine("Request receive : " + debugText);
 
             NetMessage newMsg = new NetMessage();
-            newMsg = SerializeUtils.DeserializeMsg(dataBuf);
+            Type type = typeof(NetMessage);
+            newMsg = (NetMessage)SerializeUtils.DeserializeMsg(dataBuf);
 
             byte[] tmpdata = new byte[0];
             switch (newMsg.head.lobbyProto)
@@ -79,11 +86,11 @@ namespace LobbyServ
                 case LobbyProto.Connection:
                     tmpdata = ConnectionReceived(client);
                     break;
-               
+
                 default: break;
             }
-            
-            
+
+
             SendBuffer(client, tmpdata);
 
             client.clientSocket.BeginReceive(_buffer,
